@@ -24,6 +24,7 @@
     let token = 0;
     let raf = 0;
     let ttsUtterance = null;
+    let loadAttempt = 0;
 
     function ensureContext() {
       if (!context && AudioContextClass) {
@@ -90,6 +91,7 @@
       if (!item) return;
       const segments = getSegments(item);
       const safeIndex = clamp(Number(index), 0, segments.length - 1);
+      const attempt = ++loadAttempt;
       stopSource();
       state.audioSegment = safeIndex;
       state.ttsSegment = safeIndex;
@@ -100,20 +102,23 @@
       offset = 0;
       const buttonLabel = segment.subitemId ? document.querySelector('[data-core-audio="' + segment.subitemId + '"] span') : null;
       if (buttonLabel && autoplay) buttonLabel.textContent = "加载中…";
+      if (autoplay) setTimeout(() => { if (attempt === loadAttempt && !playing) speakSegment(safeIndex); }, 6000);
       try {
         activeBuffer = await getBuffer(activeUrl);
+        if (attempt !== loadAttempt) return;
         if (seekRatio != null) offset = activeBuffer.duration * seekRatio;
         syncProgress(offset, activeBuffer.duration);
-        if (autoplay) startBuffer();
+        if (autoplay && !playing) await startBuffer();
       } catch (error) {
         if (autoplay || seekRatio != null) speakSegment(safeIndex);
       }
     }
 
-    function startBuffer() {
+    async function startBuffer() {
       if (!activeBuffer || !context || !gainNode) return;
       stopSource();
-      context.resume();
+      await context.resume();
+      if (context.state !== "running") { if (state.audioMode === "preloaded") speakSegment(state.audioSegment); return; }
       const playbackToken = ++token;
       source = context.createBufferSource();
       source.buffer = activeBuffer;
@@ -266,4 +271,7 @@
     };
   };
 })(window);
+
+
+
 

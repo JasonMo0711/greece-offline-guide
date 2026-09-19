@@ -1,5 +1,5 @@
 importScripts("./data.js", "./content-plus.js", "./subitem-plus.js", "./real-image-manifest.js");
-const CACHE_NAME = "hellas-offline-v3.0.0";
+const CACHE_NAME = "hellas-offline-v3.2.0";
 const SHELL_ASSETS = ["./","./index.html","./pc.html","./mobile.html","./styles.css","./versions.css","./data.js","./content-plus.js","./subitem-plus.js","./real-image-manifest.js","./audio-engine.js","./app.js","./manifest.webmanifest","./assets/icons/icon-192.png","./assets/icons/icon-512.png","./assets/icons/maskable-512.png"];
 const coreConfig = self.GUIDE_SUBITEM_PLUS || {};
 const audioAssets = self.GUIDE_DATA.attractions.flatMap((item) => {
@@ -34,7 +34,11 @@ self.addEventListener("activate", (event) => {
     cacheMediaInBackground();
   })());
 });
-self.addEventListener("message", (event) => { if (event.data && event.data.type === "SKIP_WAITING") self.skipWaiting(); });
+self.addEventListener("message", (event) => {
+  if (!event.data) return;
+  if (event.data.type === "SKIP_WAITING") self.skipWaiting();
+  if (event.data.type === "CACHE_MEDIA") event.waitUntil(cacheMediaInBackground());
+});
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -56,6 +60,8 @@ self.addEventListener("fetch", (event) => {
     }
   })());
 });
+
+
 
 
 
