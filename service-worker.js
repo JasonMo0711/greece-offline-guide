@@ -1,5 +1,5 @@
 importScripts("./data.js", "./content-plus.js", "./subitem-plus.js", "./real-image-manifest.js");
-const CACHE_NAME = "hellas-offline-v4.1.0";
+const CACHE_NAME = "hellas-offline-v4.3.0";
 const SHELL_ASSETS = ["./","./index.html","./pc.html","./mobile.html","./styles.css","./versions.css","./data.js","./content-plus.js","./subitem-plus.js","./real-image-manifest.js","./audio-engine.js","./app.js","./manifest.webmanifest","./assets/icons/icon-192.png","./assets/icons/icon-512.png","./assets/icons/maskable-512.png"];
 const coreConfig = self.GUIDE_SUBITEM_PLUS || {};
 const audioAssets = self.GUIDE_DATA.attractions.flatMap((item) => {
@@ -12,18 +12,21 @@ const imageManifest = self.GUIDE_REAL_IMAGES || { attractions: {}, subitems: {} 
 Object.values(imageManifest.attractions || {}).forEach((entry) => imageAssets.push(entry.localPath));
 Object.values(imageManifest.subitems || {}).forEach((group) => Object.values(group).forEach((entry) => imageAssets.push(entry.localPath)));
 let mediaCachePromise = null;
+let cacheGeneration = 0;
 async function notifyClients(message) {
   const clients = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
   clients.forEach((client) => client.postMessage(message));
 }
 async function cacheMediaInBackground() {
   if (mediaCachePromise) return mediaCachePromise;
+  const generation = cacheGeneration;
   mediaCachePromise = (async () => {
     const cache = await caches.open(CACHE_NAME);
     const assets = audioAssets.concat(imageAssets);
     let completed = 0;
     await notifyClients({ type: "CACHE_PROGRESS", completed, total: assets.length, current: "准备缓存" });
     for (let index = 0; index < assets.length; index += 3) {
+      if (generation !== cacheGeneration) return;
       const chunk = assets.slice(index, index + 3);
       await Promise.allSettled(chunk.map(async (url) => {
         const existing = await cache.match(url);
@@ -49,15 +52,21 @@ self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)));
-    await self.clients.claim();
-    cacheMediaInBackground();
-  })());
+    await self.clients.claim();  })());
 });
 self.addEventListener("message", (event) => {
   if (!event.data) return;
   if (event.data.type === "SKIP_WAITING") self.skipWaiting();
   if (event.data.type === "CACHE_MEDIA") event.waitUntil(cacheMediaInBackground());
+  if (event.data.type === "CLEAR_CACHE") event.waitUntil(clearAllCaches());
 });
+async function clearAllCaches() {
+  cacheGeneration++;
+  mediaCachePromise = null;
+  const keys = await caches.keys();
+  await Promise.all(keys.map((key) => caches.delete(key)));
+  await notifyClients({ type: "CACHE_CLEARED" });
+}
 self.addEventListener("fetch", (event) => {
   const request = event.request;
   if (request.method !== "GET") return;
@@ -79,6 +88,9 @@ self.addEventListener("fetch", (event) => {
     }
   })());
 });
+
+
+
 
 
 

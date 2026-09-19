@@ -39,7 +39,14 @@
 
       <div class="top-actions">
         <div class="version-switch"><a href="./pc.html">PC版</a><a href="./mobile.html">手机版</a></div>
-        <span class="offline-badge" id="offlineBadge" title="所有页面、地图、文字与语音均保存在本机">
+        <button class="icon-button cache-manage-button" id="cacheOfflineButton" type="button" title="缓存全部离线内容">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 20h14"/></svg>
+          <span>缓存</span>
+        </button>
+        <button class="icon-button clear-cache-button" id="clearCacheButton" type="button" title="清除全部离线缓存">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 14h8l1-14M10 11v6M14 11v6"/></svg>
+          <span>清除缓存</span>
+        </button>        <span class="offline-badge" id="offlineBadge" title="所有页面、地图、文字与语音均保存在本机">
           <span class="offline-dot"></span>
           <span id="offlineLabel">本地离线</span>
         </span>
@@ -198,6 +205,7 @@
   <script src="./app.js"></script>
 </body>
 </html>
+
 
 
 

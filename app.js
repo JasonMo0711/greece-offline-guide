@@ -29,6 +29,7 @@
     mapQuery: "", listQuery: "", audioMode: "preloaded", audioSegment: 0, ttsSegment: 0,
     installPrompt: null,
     cacheReady: false,
+    cacheRunning: false,
     cacheProgressSeen: false,
     cacheCompleted: 0,
     cacheTotal: 0, drag: null, pointers: new Map(), pinch: null, mapReady: false
@@ -752,6 +753,31 @@
   }
   let cacheProgressFadeTimer = 0;
 
+  function updateCacheButtons(cachedCount) {
+    const cacheButton = $("#cacheOfflineButton");
+    const clearButton = $("#clearCacheButton");
+    if (!cacheButton || !clearButton) return;
+    const label = cacheButton.querySelector("span");
+    cacheButton.disabled = state.cacheRunning;
+    cacheButton.classList.toggle("is-complete", state.cacheReady);
+    if (label) label.textContent = state.cacheReady ? "已缓存" : state.cacheRunning ? "缓存中" : "缓存";
+    clearButton.hidden = false;
+    clearButton.disabled = !state.cacheRunning && !state.cacheReady && cachedCount === 0;
+
+  }
+
+  function resetCacheUi() {
+    state.cacheReady = false;
+    state.cacheRunning = false;
+    state.cacheProgressSeen = false;
+    state.cacheCompleted = 0;
+    state.cacheTotal = 0;
+    const box = $("#cacheProgress");
+    if (box) { box.hidden = true; box.classList.remove("is-complete", "is-fading"); }
+    $("#offlineLabel").textContent = navigator.onLine ? "尚未缓存" : "无网离线";
+    $("#offlineBadge").classList.remove("is-checking");
+    updateCacheButtons(0);
+  }
   function showCacheProgress(completed, total, current) {
     const box = $("#cacheProgress");
     if (!box) return;
@@ -765,6 +791,7 @@
     $("#cacheProgressPercent").textContent = percent + "%";
     $("#cacheProgressBar").style.width = percent + "%";
     $("#cacheProgressDetail").textContent = completed + " / " + total + " 个离线文件" + (current ? " · " + String(current).split("/").pop() : "");
+    updateCacheButtons(completed);
   }
 
   function markCacheComplete() {
@@ -802,16 +829,57 @@
       if (percent >= 100) {
         label.textContent = "离线包已就绪";
         badge.classList.remove("is-checking");
-        if (!state.cacheReady) markCacheComplete();
-      } else {
-        label.textContent = navigator.onLine ? "正在缓存 " + percent + "%" : "离线可用 " + percent + "%";
+        state.cacheReady = true;
+        state.cacheRunning = false;
+        const progressBox = $("#cacheProgress");
+        if (progressBox) progressBox.hidden = true;
+        updateCacheButtons(actual);
+      } else if (state.cacheRunning) {
+        const displayPercent = state.cacheTotal ? Math.round(state.cacheCompleted / state.cacheTotal * 100) : percent;
+        label.textContent = navigator.onLine ? "正在缓存 " + displayPercent + "%" : "离线可用 " + displayPercent + "%";
         badge.classList.add("is-checking");
-        showCacheProgress(actual, expected, "");
+      } else {
+        state.cacheReady = false;
+        label.textContent = navigator.onLine ? "尚未缓存" : "离线可用 " + percent + "%";
+        badge.classList.remove("is-checking");
       }
+      updateCacheButtons(actual);
     } catch (error) {
       label.textContent = navigator.onLine ? "正在准备离线包" : "无网离线";
     }
-  }  function registerOfflineApp() {
+  }  async function startManualCache() {
+    if (!("serviceWorker" in navigator)) { showToast("当前浏览器不支持离线缓存。"); return; }
+    if (state.cacheReady) { showToast("离线内容已经缓存完成。"); return; }
+    if (state.cacheRunning) { showToast("正在缓存，请稍候。"); return; }
+    state.cacheRunning = true;
+    showCacheProgress(0, 308, "准备缓存");
+    try {
+      const ready = await navigator.serviceWorker.ready;
+      if (ready.active) ready.active.postMessage({ type: "CACHE_MEDIA" });
+      else throw new Error("Service Worker not active");
+    } catch (error) {
+      state.cacheRunning = false;
+      resetCacheUi();
+      showToast("离线缓存初始化失败，请刷新页面后重试。");
+    }
+  }
+
+  async function clearAllOfflineCache() {
+    if (!window.confirm("确定清除全部离线缓存吗？清除后需要重新联网缓存约 104 MB 内容。")) return;
+    clearTimeout(cacheProgressFadeTimer);
+    state.cacheRunning = false;
+    try {
+      if ("serviceWorker" in navigator) {
+        const ready = await navigator.serviceWorker.ready;
+        if (ready.active) ready.active.postMessage({ type: "CLEAR_CACHE" });
+      }
+      const keys = await caches.keys();
+      await Promise.all(keys.map((key) => caches.delete(key)));
+    } catch (error) {}
+    resetCacheUi();
+    showToast("离线缓存已清除，已释放手机存储空间。");
+  }
+  function registerOfflineApp() {
     updateOfflineBadge();
     window.addEventListener("online", updateOfflineBadge);
     window.addEventListener("offline", updateOfflineBadge);
@@ -821,6 +889,7 @@
         if (!event.data) return;
         if (event.data.type === "CACHE_PROGRESS") showCacheProgress(event.data.completed, event.data.total, event.data.current);
         if (event.data.type === "CACHE_COMPLETE") markCacheComplete();
+        if (event.data.type === "CACHE_CLEARED") resetCacheUi();
       });
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
@@ -830,12 +899,13 @@
       navigator.serviceWorker.register("./service-worker.js").then((registration) => {
         updateOfflineBadge();
         registration.update();
-        navigator.serviceWorker.ready.then((ready) => { if (ready.active) ready.active.postMessage({ type: "CACHE_MEDIA" }); });
         setInterval(updateOfflineBadge, 3000);
       }).catch(() => {
         $("#offlineLabel").textContent = "浏览器本地模式";
       });
     }
+    $("#cacheOfflineButton").addEventListener("click", startManualCache);
+    $("#clearCacheButton").addEventListener("click", clearAllOfflineCache);
     window.addEventListener("beforeinstallprompt", (event) => {
       event.preventDefault();
       state.installPrompt = event;
@@ -886,6 +956,16 @@
     console.error(error);
   }
 })();
+
+
+
+
+
+
+
+
+
+
 
 
 

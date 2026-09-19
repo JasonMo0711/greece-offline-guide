@@ -437,3 +437,12 @@ svg { display: block; }
 .cache-progress.is-complete .cache-progress-track i { background: #49a878; }
 .cache-progress.is-fading { opacity: 0; transform: translate(-50%, -8px); }
 @media (max-width: 620px) { .cache-progress { top: calc(var(--topbar-h) + 7px); width: calc(100vw - 22px); border-radius: 15px; } }
+.cache-manage-button { color: var(--brand); }
+.clear-cache-button { color: var(--coral); }
+.cache-manage-button.is-complete { color: #2f8b63; border-color: rgba(47,139,99,.24); background: rgba(73,168,120,.10); }
+.icon-button:disabled { opacity: .52; cursor: wait; }
+@media (max-width: 900px) {
+  .top-actions { gap: 6px; }
+  .cache-manage-button, .clear-cache-button { width: 38px; padding: 0; }
+  .cache-manage-button span, .clear-cache-button span { display: none; }
+}
