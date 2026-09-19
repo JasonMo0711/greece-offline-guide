@@ -1,5 +1,5 @@
 importScripts("./data.js", "./content-plus.js", "./subitem-plus.js", "./real-image-manifest.js");
-const CACHE_NAME = "hellas-offline-v3.2.0";
+const CACHE_NAME = "hellas-offline-v4.1.0";
 const SHELL_ASSETS = ["./","./index.html","./pc.html","./mobile.html","./styles.css","./versions.css","./data.js","./content-plus.js","./subitem-plus.js","./real-image-manifest.js","./audio-engine.js","./app.js","./manifest.webmanifest","./assets/icons/icon-192.png","./assets/icons/icon-512.png","./assets/icons/maskable-512.png"];
 const coreConfig = self.GUIDE_SUBITEM_PLUS || {};
 const audioAssets = self.GUIDE_DATA.attractions.flatMap((item) => {
@@ -11,15 +11,34 @@ const imageAssets = [];
 const imageManifest = self.GUIDE_REAL_IMAGES || { attractions: {}, subitems: {} };
 Object.values(imageManifest.attractions || {}).forEach((entry) => imageAssets.push(entry.localPath));
 Object.values(imageManifest.subitems || {}).forEach((group) => Object.values(group).forEach((entry) => imageAssets.push(entry.localPath)));
-async function cacheMediaInBackground() {
-  const cache = await caches.open(CACHE_NAME);
-  const assets = audioAssets.concat(imageAssets);
-  for (let index = 0; index < assets.length; index += 4) {
-    await Promise.allSettled(assets.slice(index, index + 4).map((url) => cache.add(url)));
-    await new Promise((resolve) => setTimeout(resolve, 40));
-  }
+let mediaCachePromise = null;
+async function notifyClients(message) {
+  const clients = await self.clients.matchAll({ includeUncontrolled: true, type: "window" });
+  clients.forEach((client) => client.postMessage(message));
 }
-self.addEventListener("install", (event) => {
+async function cacheMediaInBackground() {
+  if (mediaCachePromise) return mediaCachePromise;
+  mediaCachePromise = (async () => {
+    const cache = await caches.open(CACHE_NAME);
+    const assets = audioAssets.concat(imageAssets);
+    let completed = 0;
+    await notifyClients({ type: "CACHE_PROGRESS", completed, total: assets.length, current: "准备缓存" });
+    for (let index = 0; index < assets.length; index += 3) {
+      const chunk = assets.slice(index, index + 3);
+      await Promise.allSettled(chunk.map(async (url) => {
+        const existing = await cache.match(url);
+        if (!existing) await cache.add(url);
+      }));
+      completed += chunk.length;
+      await notifyClients({ type: "CACHE_PROGRESS", completed: Math.min(completed, assets.length), total: assets.length, current: chunk[chunk.length - 1] });
+      await new Promise((resolve) => setTimeout(resolve, 60));
+    }
+    const readyRequest = new Request(new URL("./__offline_ready__", self.location.href));
+    await cache.put(readyRequest, new Response(JSON.stringify({ ready: true, total: assets.length, cachedAt: new Date().toISOString() }), { headers: { "Content-Type": "application/json" } }));
+    await notifyClients({ type: "CACHE_COMPLETE", completed: assets.length, total: assets.length });
+  })().finally(() => { mediaCachePromise = null; });
+  return mediaCachePromise;
+}self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(CACHE_NAME);
     await cache.addAll(SHELL_ASSETS);
@@ -60,6 +79,8 @@ self.addEventListener("fetch", (event) => {
     }
   })());
 });
+
+
 
 
 

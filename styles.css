@@ -425,3 +425,15 @@ svg { display: block; }
   .mobile-switcher button.is-active { color: #fff; background: linear-gradient(145deg, #1b6872, #124c5a); box-shadow: 0 8px 18px rgba(18,76,90,.25); transform: translateY(-1px); }
   .mobile-switcher button[data-view="detail"].is-active { background: linear-gradient(145deg, #e1765d, #c9543d); box-shadow: 0 8px 18px rgba(201,84,61,.24); }
 }
+.cache-progress { position: fixed; z-index: 160; top: calc(var(--topbar-h) + 10px); left: 50%; width: min(520px, calc(100vw - 28px)); padding: 11px 14px 9px; border: 1px solid rgba(18,76,90,.14); border-radius: 16px; background: rgba(255,253,248,.96); box-shadow: 0 16px 40px rgba(25,55,55,.18); backdrop-filter: blur(18px); transform: translateX(-50%); transition: opacity .3s ease, transform .3s ease; }
+.cache-progress-head { display: flex; align-items: center; justify-content: space-between; gap: 14px; color: var(--brand); font-size: 11px; font-weight: 800; }
+.cache-progress-head span { display: inline-flex; align-items: center; gap: 7px; }
+.cache-progress-head i { width: 9px; height: 9px; border: 2px solid rgba(18,76,90,.22); border-top-color: var(--coral); border-radius: 50%; animation: spin .8s linear infinite; }
+.cache-progress-head strong { color: var(--coral); font-size: 12px; font-variant-numeric: tabular-nums; }
+.cache-progress-track { height: 7px; margin-top: 8px; overflow: hidden; border-radius: 999px; background: rgba(18,76,90,.10); }
+.cache-progress-track i { display: block; width: 0; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #1b6872, #d45e44); transition: width .25s ease; }
+.cache-progress small { display: block; margin-top: 5px; color: var(--muted); font-size: 9px; text-align: right; font-variant-numeric: tabular-nums; }
+.cache-progress.is-complete .cache-progress-head i { border: 0; background: #49a878; animation: none; }
+.cache-progress.is-complete .cache-progress-track i { background: #49a878; }
+.cache-progress.is-fading { opacity: 0; transform: translate(-50%, -8px); }
+@media (max-width: 620px) { .cache-progress { top: calc(var(--topbar-h) + 7px); width: calc(100vw - 22px); border-radius: 15px; } }

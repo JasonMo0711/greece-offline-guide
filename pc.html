@@ -49,6 +49,11 @@
         </button>
       </div>
     </header>
+    <div class="cache-progress" id="cacheProgress" hidden>
+      <div class="cache-progress-head"><span><i></i>正在自动缓存全部离线内容</span><strong id="cacheProgressPercent">0%</strong></div>
+      <div class="cache-progress-track"><i id="cacheProgressBar"></i></div>
+      <small id="cacheProgressDetail">0 / 0</small>
+    </div>
 
     <main class="main-content">
       <section class="view is-active" id="mapView" aria-label="地图视图">
@@ -193,6 +198,7 @@
   <script src="./app.js"></script>
 </body>
 </html>
+
 
 
 

@@ -27,7 +27,11 @@
     selectedAttractionId: null, selectedSubitemId: null, galleryIndex: 0,
     openRegions: new Set(["athens", "delphi", "meteora", "patras", "zakynthos", "olympia", "nafplio", "mycenae", "corinth", "santorini"]),
     mapQuery: "", listQuery: "", audioMode: "preloaded", audioSegment: 0, ttsSegment: 0,
-    installPrompt: null, drag: null, pointers: new Map(), pinch: null, mapReady: false
+    installPrompt: null,
+    cacheReady: false,
+    cacheProgressSeen: false,
+    cacheCompleted: 0,
+    cacheTotal: 0, drag: null, pointers: new Map(), pinch: null, mapReady: false
   };
   const regionById = Object.fromEntries(DATA.regions.map((region) => [region.id, region]));
   const attractionById = Object.fromEntries(DATA.attractions.map((item) => [item.id, item]));
@@ -746,6 +750,39 @@
     fitMap();
     setTimeout(() => { const loading = $("#mapLoading"); if (loading) loading.hidden = true; }, 240);
   }
+  let cacheProgressFadeTimer = 0;
+
+  function showCacheProgress(completed, total, current) {
+    const box = $("#cacheProgress");
+    if (!box) return;
+    box.hidden = false;
+    box.classList.remove("is-complete", "is-fading");
+    const percent = total ? Math.min(100, Math.round(completed / total * 100)) : 0;
+    state.cacheProgressSeen = true;
+    state.cacheCompleted = completed;
+    state.cacheTotal = total;
+    $("#offlineLabel").textContent = navigator.onLine ? "正在缓存 " + percent + "%" : "离线可用 " + percent + "%";
+    $("#cacheProgressPercent").textContent = percent + "%";
+    $("#cacheProgressBar").style.width = percent + "%";
+    $("#cacheProgressDetail").textContent = completed + " / " + total + " 个离线文件" + (current ? " · " + String(current).split("/").pop() : "");
+  }
+
+  function markCacheComplete() {
+    const box = $("#cacheProgress");
+    if (!box) return;
+    state.cacheReady = true;
+    showCacheProgress(1, 1, "");
+    $("#cacheProgressPercent").textContent = "100%";
+    $("#cacheProgressBar").style.width = "100%";
+    $("#cacheProgressDetail").textContent = "全部离线文件已保存，可安装到主屏幕";
+    box.classList.add("is-complete");
+    clearTimeout(cacheProgressFadeTimer);
+    cacheProgressFadeTimer = setTimeout(() => {
+      box.classList.add("is-fading");
+      setTimeout(() => { box.hidden = true; }, 320);
+    }, 2600);
+  }
+
   async function updateOfflineBadge() {
     const label = $("#offlineLabel");
     const badge = $("#offlineBadge");
@@ -765,21 +802,26 @@
       if (percent >= 100) {
         label.textContent = "离线包已就绪";
         badge.classList.remove("is-checking");
+        if (!state.cacheReady) markCacheComplete();
       } else {
         label.textContent = navigator.onLine ? "正在缓存 " + percent + "%" : "离线可用 " + percent + "%";
         badge.classList.add("is-checking");
+        showCacheProgress(actual, expected, "");
       }
     } catch (error) {
       label.textContent = navigator.onLine ? "正在准备离线包" : "无网离线";
     }
-  }
-
-  function registerOfflineApp() {
+  }  function registerOfflineApp() {
     updateOfflineBadge();
     window.addEventListener("online", updateOfflineBadge);
     window.addEventListener("offline", updateOfflineBadge);
     if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
       let refreshing = false;
+      navigator.serviceWorker.addEventListener("message", (event) => {
+        if (!event.data) return;
+        if (event.data.type === "CACHE_PROGRESS") showCacheProgress(event.data.completed, event.data.total, event.data.current);
+        if (event.data.type === "CACHE_COMPLETE") markCacheComplete();
+      });
       navigator.serviceWorker.addEventListener("controllerchange", () => {
         if (refreshing) return;
         refreshing = true;
@@ -788,6 +830,7 @@
       navigator.serviceWorker.register("./service-worker.js").then((registration) => {
         updateOfflineBadge();
         registration.update();
+        navigator.serviceWorker.ready.then((ready) => { if (ready.active) ready.active.postMessage({ type: "CACHE_MEDIA" }); });
         setInterval(updateOfflineBadge, 3000);
       }).catch(() => {
         $("#offlineLabel").textContent = "浏览器本地模式";
@@ -799,6 +842,7 @@
       $("#installButton").hidden = false;
     });
     $("#installButton").addEventListener("click", async () => {
+      if (!state.cacheReady) { showToast("请等待“离线包已就绪”后再安装。"); $("#cacheProgress").hidden = false; return; }
       if (!state.installPrompt) { showToast("请使用浏览器菜单中的“添加到主屏幕”。"); return; }
       state.installPrompt.prompt();
       await state.installPrompt.userChoice;
@@ -842,6 +886,9 @@
     console.error(error);
   }
 })();
+
+
+
 
 
 
