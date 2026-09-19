@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#124c5a">
+  <meta name="description" content="面向中国游客的希腊离线地图、景点详解与中文语音导览">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./assets/icons/icon-192.png">
+  <link rel="stylesheet" href="./styles.css">
+  <link rel="stylesheet" href="./versions.css">
+  <title>希腊离线漫游</title>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#map" aria-label="返回地图首页">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 48 48"><path d="M9 31c6-1 8-6 11-10 3-5 8-8 15-7 3 .4 5 2 5 5 0 8-8 15-18 16-5 .5-9-.3-13-2Z"/><path d="M15 35c3-8 9-13 18-15M20 29l-5-5M25 25l5 5"/></svg>
+        </span>
+        <span>
+          <strong>希腊离线漫游</strong>
+          <small>HELLAS OFFLINE</small>
+        </span>
+      </a>
+
+      <nav class="mode-tabs" aria-label="视图切换">
+        <button class="mode-tab is-active" type="button" data-view="map" aria-selected="true">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 5-2 8 2 5-2v14l-5 2-8-2-5 2V6Z"/><path d="M8 4v14M16 6v14"/></svg>
+          <span>地图视图</span>
+        </button>
+        <button class="mode-tab" type="button" data-view="list" aria-selected="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
+          <span>列表视图</span>
+        </button>
+      </nav>
+
+      <div class="top-actions">
+        <div class="version-switch"><a href="./pc.html">PC版</a><a href="./mobile.html">手机版</a></div>
+        <span class="offline-badge" id="offlineBadge" title="所有页面、地图、文字与语音均保存在本机">
+          <span class="offline-dot"></span>
+          <span id="offlineLabel">本地离线</span>
+        </span>
+        <button class="icon-button install-button" id="installButton" type="button" hidden title="安装到设备">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5M4 20h16"/></svg>
+          <span>安装</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="main-content">
+      <section class="view is-active" id="mapView" aria-label="地图视图">
+        <div class="map-panel">
+          <div class="map-heading">
+            <div>
+              <p class="eyebrow">GREECE / 希腊全境</p>
+              <h1>从城市到遗迹，沿着缩放探索</h1>
+              <p class="map-hint">滚轮或双指缩放 · 拖动平移 · 点击标注进入讲解</p>
+            </div>
+            <label class="map-search" for="mapSearchInput">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>
+              <input id="mapSearchInput" type="search" placeholder="搜索景点或城市" autocomplete="off">
+            </label>
+          </div>
+
+          <div class="map-shell" id="mapShell">
+            <div class="map-meta-strip" aria-hidden="true">
+              <span id="mapLevelLabel">城市概览</span>
+              <span>矢量底图 · 本地离线</span>
+            </div>
+
+            <div class="map-viewport" id="mapViewport" tabindex="0" aria-label="可缩放和平移的希腊地图">
+              <div class="map-content" id="mapContent">
+                <div class="map-base" id="mapBase" aria-hidden="true"></div>
+                <div class="map-markers" id="mapMarkers"></div>
+              </div>
+            </div>
+
+            <div class="zoom-controls" aria-label="地图缩放控制">
+              <button type="button" id="zoomIn" title="放大" aria-label="放大">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button type="button" id="zoomOut" title="缩小" aria-label="缩小">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/></svg>
+              </button>
+              <button type="button" id="zoomReset" title="重置地图" aria-label="重置地图">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4v6h6M20 20v-6h-6"/><path d="M5.5 15A8 8 0 0 0 19 10M18.5 9A8 8 0 0 0 5 14"/></svg>
+              </button>
+            </div>
+
+            <div class="map-compass" aria-hidden="true">
+              <span>N</span>
+              <i></i>
+            </div>
+
+            <div class="map-legend" id="mapLegend">
+              <div class="legend-title">图例</div>
+              <span><i class="legend-dot city"></i>城市聚合</span>
+              <span><i class="legend-dot site"></i>景点</span>
+              <span><i class="legend-dot sub"></i>关键物件</span>
+            </div>
+
+            <div class="region-peek" id="regionPeek" hidden>
+              <button class="region-peek-close" type="button" id="regionPeekClose" aria-label="关闭">×</button>
+              <span class="region-kicker" id="regionPeekKicker">城市</span>
+              <h2 id="regionPeekTitle"></h2>
+              <p id="regionPeekText"></p>
+              <div class="region-peek-actions">
+                <button class="button is-primary" type="button" id="regionPeekFocus">放大探索</button>
+                <button class="button is-quiet" type="button" id="regionPeekList">查看列表</button>
+              </div>
+            </div>
+
+            <div class="map-loading" id="mapLoading">
+              <span class="spinner"></span>
+              <span>正在铺开本地地图…</span>
+            </div>
+          </div>
+
+          <div class="city-ribbon" id="cityRibbon" aria-label="快速定位城市"></div>
+        </div>
+      </section>
+
+      <section class="view" id="listView" aria-label="列表视图">
+        <div class="list-layout">
+          <aside class="list-sidebar">
+            <p class="eyebrow">CITY BY CITY</p>
+            <h1>按城市查找景点</h1>
+            <p>已按希腊旅行线路分组。展开城市即可查看景点、关键建筑与游览重点。</p>
+            <div class="list-stats">
+              <div><strong id="statSites">0</strong><span>景点</span></div>
+              <div><strong id="statCities">0</strong><span>城市 / 地区</span></div>
+              <div><strong id="statChapters">0</strong><span>讲解章节</span></div>
+            </div>
+            <div class="region-jump" id="regionJump"></div>
+          </aside>
+
+          <div class="list-main">
+            <div class="list-toolbar">
+              <label class="large-search" for="listSearchInput">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m16 16 5 5"/></svg>
+                <input id="listSearchInput" type="search" placeholder="搜索：卫城、蓝顶教堂、沉船湾…" autocomplete="off">
+              </label>
+              <button class="filter-button" type="button" id="collapseAllButton">收起全部</button>
+            </div>
+            <div class="list-groups" id="listGroups"></div>
+            <div class="empty-state" id="listEmpty" hidden>
+              <svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="28" cy="28" r="18"/><path d="m42 42 13 13"/></svg>
+              <h2>没有找到相关景点</h2>
+              <p>试试城市名、希腊原文，或“神庙”“海滩”“博物馆”等关键词。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="view detail-view" id="detailView" aria-label="景点详情">
+        <div class="detail-loading" id="detailLoading">
+          <span class="spinner"></span>
+          <span>正在载入离线讲解…</span>
+        </div>
+      </section>
+    </main>
+
+    <nav class="mobile-switcher" aria-label="移动端视图切换">
+      <button type="button" class="is-active" data-view="map">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 5-2 8 2 5-2v14l-5 2-8-2-5 2V6Z"/><path d="M8 4v14M16 6v14"/></svg>
+        <span>地图</span>
+      </button>
+      <button type="button" data-view="list">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="3.5" cy="6" r="1"/><circle cx="3.5" cy="12" r="1"/><circle cx="3.5" cy="18" r="1"/></svg>
+        <span>列表</span>
+      </button>
+      <button type="button" data-view="detail" id="mobileDetailButton">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.1"/></svg>
+        <span>详情</span>
+      </button>
+    </nav>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <noscript>
+    <div class="noscript">此离线导览需要启用 JavaScript 才能显示地图、景点详情与语音播放。</div>
+  </noscript>
+
+  <script src="./data.js"></script>
+  <script src="./content-plus.js"></script>
+  <script src="./subitem-plus.js"></script>
+  <script src="./real-image-manifest.js"></script>
+  <script src="./audio-engine.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+

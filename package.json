@@ -1,0 +1,17 @@
+{
+  "name": "hellas-offline-guide",
+  "version": "1.0.0",
+  "private": true,
+  "description": "面向中国游客的希腊离线网页导览工具",
+  "scripts": {
+    "start": "node scripts/serve.js",
+    "check": "node --check app.js && node --check audio-engine.js && node --check data.js && node --check content-plus.js && node --check subitem-plus.js && node --check service-worker.js",
+    "audio:text": "node scripts/prepare-audio-text.js"
+  }
+}
+
+
+
+
+
+
